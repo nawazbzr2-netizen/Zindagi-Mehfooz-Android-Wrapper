@@ -14,14 +14,8 @@ jobs:
 
       - name: Unzip project
         run: |
-          unzip -o Zindagi-Mehfooz-Android-Wrapper-3.zip
+          unzip -o Zindagi-Mehfooz-Android-Wrapper-3-2.zip
           ls -la android-wrapper/
-
-      - name: Apply file-picker fix
-        run: |
-          # Overlay the improved MainActivity that defaults to SEIR Download folder
-          cp patches/MainActivity.kt android-wrapper/app/src/main/java/org/zm/calculator/MainActivity.kt
-          echo "MainActivity.kt patched for better file picker"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
