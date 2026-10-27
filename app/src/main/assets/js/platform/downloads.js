@@ -1,2 +1,0 @@
-// downloads stub
-window.Downloads = {};
