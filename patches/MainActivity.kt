@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -21,7 +22,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -40,14 +40,26 @@ class MainActivity : AppCompatActivity() {
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val uris: Array<Uri>? = if (result.resultCode == RESULT_OK && result.data != null) {
-            WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
-        } else null
-        fileChooserCallback?.onReceiveValue(uris)
+        val uris = mutableListOf<Uri>()
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val data = result.data!!
+            // Prefer ClipData for multi-select
+            val clip = data.clipData
+            if (clip != null) {
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i).uri?.let { uris.add(it) }
+                }
+            } else {
+                data.data?.let { uris.add(it) }
+            }
+        }
+        val arr = if (uris.isEmpty()) null else uris.toTypedArray()
+        fileChooserCallback?.onReceiveValue(arr)
         fileChooserCallback = null
     }
 
     private fun defaultReportsFolderUri(): Uri {
+        // Target the SEIR app's Download folder so user lands close to reports
         val docId = "primary:Android/data/org.seir.android.norad/files/Download"
         return DocumentsContract.buildDocumentUri(
             "com.android.externalstorage.documents",
@@ -65,6 +77,7 @@ class MainActivity : AppCompatActivity() {
             locHelper?.start()
             flushQueueAsync()
         }
+        // Storage result is informational; SAF does not require it on modern Android
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -74,17 +87,25 @@ class MainActivity : AppCompatActivity() {
         root = FrameLayout(this)
         setContentView(root)
 
+        // ---- Splash photo (2.5 s) ----
         val splash = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+            var loaded = false
             try {
-                val ism = assets.open("splash.jpg")
-                setImageBitmap(android.graphics.BitmapFactory.decodeStream(ism))
-                ism.close()
-            } catch (_: Exception) {
+                assets.open("splash.jpg").use { stream ->
+                    val bmp = BitmapFactory.decodeStream(stream)
+                    if (bmp != null) {
+                        setImageBitmap(bmp)
+                        loaded = true
+                    }
+                }
+            } catch (_: Exception) { }
+            if (!loaded) {
+                // Fallback solid EPI-ish blue
                 setBackgroundColor(0xFF1e3a5f.toInt())
             }
         }
@@ -126,6 +147,7 @@ class MainActivity : AppCompatActivity() {
                 filePathCallback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?
             ): Boolean {
+                // Cancel any previous pending callback
                 fileChooserCallback?.onReceiveValue(null)
                 fileChooserCallback = filePathCallback
 
@@ -133,13 +155,14 @@ class MainActivity : AppCompatActivity() {
                     ?.firstOrNull { it.isNotBlank() }
                     ?: "application/pdf"
 
-                // Unlimited: always allow multiple PDF selection
+                // FORCE multi-select for Daily Immunization + Children Defaulters
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
-                    type = acceptType
+                    type = "*/*"
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf"))
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/*", "*/*"))
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         putExtra(DocumentsContract.EXTRA_INITIAL_URI, defaultReportsFolderUri())
                     }
@@ -149,25 +172,10 @@ class MainActivity : AppCompatActivity() {
                     fileChooserLauncher.launch(intent)
                     true
                 } catch (e: Exception) {
-                    Log.w("EpiMain", "Primary chooser failed", e)
-                    try {
-                        val fallback = Intent(Intent.ACTION_GET_CONTENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "application/pdf"
-                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                        }
-                        fileChooserLauncher.launch(Intent.createChooser(fallback, "Select PDF Report(s)"))
-                        true
-                    } catch (e2: Exception) {
-                        fileChooserCallback?.onReceiveValue(null)
-                        fileChooserCallback = null
-                        Toast.makeText(
-                            this@MainActivity,
-                            "فائل منتخب نہیں ہو سکی۔ براہ کرم دوبارہ کوشش کریں۔",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        false
-                    }
+                    Log.e("EpiMain", "file chooser failed", e)
+                    fileChooserCallback?.onReceiveValue(null)
+                    fileChooserCallback = null
+                    false
                 }
             }
         }
@@ -184,8 +192,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Request location + storage permissions as early as possible
         requestAllNeededPermissions()
 
+        // Show splash for ~2.5 seconds then load the web app
         Handler(Looper.getMainLooper()).postDelayed({
             if (!splashShown) {
                 splashShown = true
@@ -209,6 +219,7 @@ class MainActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED
         ) need.add(Manifest.permission.ACCESS_COARSE_LOCATION)
 
+        // Legacy storage for pre-Android 13 (helps some file-manager UIs)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
         ) {
