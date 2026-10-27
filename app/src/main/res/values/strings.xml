@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zindagi Mehfooz EPI</string>
+    <string name="loc_channel_name">Live location</string>
+    <string name="loc_notification_title">لوکیشن چل رہی ہے</string>
+    <string name="loc_notification_text">ایپ بند ہونے پر بھی لوکیشن سرور پر جاتی رہتی ہے</string>
+</resources>
