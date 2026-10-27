@@ -17,6 +17,11 @@ jobs:
           unzip -o Zindagi-Mehfooz-Android-Wrapper-3.zip
           ls -la android-wrapper/
 
+      - name: Apply fixes (multi-file, storage, icon, splash)
+        run: |
+          chmod +x patches/apply_patches.sh
+          bash patches/apply_patches.sh
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
