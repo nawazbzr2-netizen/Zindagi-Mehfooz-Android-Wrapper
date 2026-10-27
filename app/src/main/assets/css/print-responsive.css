@@ -1,0 +1,2 @@
+/* print */
+@media print { .no-print { display: none; } }
