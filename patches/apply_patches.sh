@@ -6,13 +6,18 @@ echo "Applying EPI app fixes..."
 cp patches/MainActivity.kt "$ROOT/app/src/main/java/org/zm/calculator/MainActivity.kt"
 cp patches/AndroidManifest.xml "$ROOT/app/src/main/AndroidManifest.xml"
 
+mkdir -p "$ROOT/app/src/main/assets"
+
 for dens in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
   mkdir -p "$ROOT/app/src/main/res/mipmap-$dens"
   if [ -f "patches/ic_launcher_$dens.b64" ]; then
     base64 -d "patches/ic_launcher_$dens.b64" > "$ROOT/app/src/main/res/mipmap-$dens/ic_launcher.png"
-  fi
-  if [ -f "patches/ic_launcher_round_$dens.b64" ]; then
-    base64 -d "patches/ic_launcher_round_$dens.b64" > "$ROOT/app/src/main/res/mipmap-$dens/ic_launcher_round.png"
+    # Use same for round if no separate round provided
+    if [ ! -f "patches/ic_launcher_round_$dens.b64" ]; then
+      cp "$ROOT/app/src/main/res/mipmap-$dens/ic_launcher.png" "$ROOT/app/src/main/res/mipmap-$dens/ic_launcher_round.png"
+    else
+      base64 -d "patches/ic_launcher_round_$dens.b64" > "$ROOT/app/src/main/res/mipmap-$dens/ic_launcher_round.png"
+    fi
   fi
 done
 
