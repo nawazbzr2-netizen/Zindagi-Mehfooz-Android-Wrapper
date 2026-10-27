@@ -1,14 +1,9 @@
 # Zindagi Mehfooz Android Wrapper
 
-Android WebView wrapper for Zindagi Mehfooz EPI app.
+## How to build
 
-## Build APK
+1. Upload the file **Zindagi-Mehfooz-Android-Wrapper-3-2.zip** to this repository root.
+2. Go to **Actions** → **Build APK** → **Run workflow**
+3. After the run finishes, download the APK from **Artifacts**.
 
-Go to **Actions** tab → **Build APK** → **Run workflow**
-
-The workflow will:
-1. Unzip the project
-2. Build debug APK
-3. Upload it as artifact
-
-You can download the APK from the Actions run page after it finishes.
+The workflow will unzip the project and build a debug APK automatically.
