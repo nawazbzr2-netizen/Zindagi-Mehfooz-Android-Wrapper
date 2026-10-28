@@ -14,8 +14,20 @@ jobs:
 
       - name: Unzip project
         run: |
-          unzip -o Zindagi-Mehfooz-Android-Wrapper-3.zip
-          ls -la android-wrapper/
+          # Prefer exact name, otherwise any matching zip
+          if [ -f Zindagi-Mehfooz-Android-Wrapper-3.zip ]; then
+            unzip -o Zindagi-Mehfooz-Android-Wrapper-3.zip
+          else
+            ZIP=$(ls -1 *.zip 2>/dev/null | head -1)
+            if [ -n "$ZIP" ]; then
+              echo "Using $ZIP"
+              unzip -o "$ZIP"
+            else
+              echo "No project ZIP found"
+              exit 1
+            fi
+          fi
+          ls -la android-wrapper/ || ls -la
 
       - name: Apply fixes (multi-file, storage, icon, splash)
         run: |
