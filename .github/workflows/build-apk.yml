@@ -12,15 +12,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unzip ready project
-        run: |
-          unzip -o EPI-Calculator-GitHub-ready.zip
-          # Bring contents to current directory for the rest of the steps
-          shopt -s dotglob
-          mv Zindagi-Mehfooz-Android-Wrapper-main/* .
-          rmdir Zindagi-Mehfooz-Android-Wrapper-main 2>/dev/null || true
-          ls -la
-
       - name: Verify files were not modified
         run: |
           sha256sum -c CHECKSUMS.sha256 --quiet || { echo "ERROR: project files were changed after they were prepared. Upload the original files unchanged."; exit 1; }
