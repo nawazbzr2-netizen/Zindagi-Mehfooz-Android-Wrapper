@@ -12,9 +12,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Unzip project
+        run: |
+          unzip -q -o EPI-Calculator-GitHub-ready.zip -d _proj
+          CS=$(find _proj -name CHECKSUMS.sha256 | head -1)
+          ROOT=$(dirname "$CS")
+          echo "PROJ_ROOT=$ROOT" >> "$GITHUB_ENV"
+          ls -la "$ROOT"
+
       - name: Verify files were not modified
         run: |
-          sha256sum -c CHECKSUMS.sha256 --quiet || { echo "ERROR: project files were changed after they were prepared. Upload the original files unchanged."; exit 1; }
+          cd "$PROJ_ROOT"
+          sha256sum -c CHECKSUMS.sha256 --quiet
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,17 +39,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Make gradlew executable
-        working-directory: android-wrapper
-        run: chmod +x gradlew
-
       - name: Build debug APK
-        working-directory: android-wrapper
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          cd "$PROJ_ROOT/android-wrapper"
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/out/app-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: EPI-CALCULATOR
-          path: android-wrapper/app/build/outputs/apk/debug/app-debug.apk
+          path: out/app-debug.apk
           if-no-files-found: error
