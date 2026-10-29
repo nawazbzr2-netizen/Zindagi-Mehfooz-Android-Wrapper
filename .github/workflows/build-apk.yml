@@ -29,7 +29,7 @@ jobs:
 
       - name: Apply updated files
         run: |
-          for f in MainActivity.kt WebAppInterface.kt dialogs-utils.js upload-queue.js file-manager.js; do
+          for f in MainActivity.kt WebAppInterface.kt AndroidManifest.xml dialogs-utils.js upload-queue.js file-manager.js; do
             T=$(find "$PROJ_ROOT/android-wrapper" -name "$f" | head -1)
             if [ -z "$T" ] || [ ! -f "patch/$f" ]; then echo "ERROR: missing $f"; exit 1; fi
             cp "patch/$f" "$T"
